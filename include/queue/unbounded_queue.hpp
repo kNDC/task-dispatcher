@@ -1,18 +1,82 @@
 #pragma once
 #include "queue/queue.hpp"
 
-namespace dispatcher::queue {
+#include <list>
 
-class UnboundedQueue : public IQueue {
-    // здесь ваш код
-public:
-    explicit UnboundedQueue(int capacity);
+#include <functional>
 
-    void push(std::function<void()> task) override;
+#include <mutex>
+#include <atomic>
+#include <condition_variable>
 
-    std::optional<std::function<void()>> try_pop() override;
+namespace dispatcher::queue
+{
+    template <typename T>
+    class UnboundedQueue : public IQueue<T>
+    {
+        std::list<T> queue_;
 
-    ~UnboundedQueue() override;
-};
+        mutable std::mutex queue_mutex_;
+        bool drain_ = false;
+        std::condition_variable not_empty_msg_;
 
+    public:
+        explicit UnboundedQueue(size_t capacity = 0)
+        {}
+
+        ~UnboundedQueue() override;
+
+        void push(T element) override;
+        std::optional<T> try_pop() override;
+
+        bool empty() const override;
+        void drain() override;
+    };
+
+    template <typename T>
+    UnboundedQueue<T>::~UnboundedQueue() { drain(); }
+
+    template <typename T>
+    void UnboundedQueue<T>::push(T element)
+    {
+        std::unique_lock lock(queue_mutex_);
+        queue_.emplace_back(std::move(element));
+
+        not_empty_msg_.notify_one();
+    }
+
+    template <typename T>
+    std::optional<T> UnboundedQueue<T>::try_pop()
+    {
+        std::unique_lock lock(queue_mutex_);
+        not_empty_msg_.wait(lock, 
+            [this]()
+            {
+                return queue_.size() || drain_;
+            });
+        
+        if (!queue_.size()) return std::nullopt;
+
+        std::optional<T> out{std::move(queue_.front())};
+        queue_.pop_front();
+
+        return out;
+    }
+
+    template <typename T>
+    bool UnboundedQueue<T>::empty() const
+    {
+        std::lock_guard lock(queue_mutex_);
+        return queue_.empty();
+    }
+
+    template <typename T>
+    void UnboundedQueue<T>::drain()
+    {
+        {
+            std::lock_guard lock(queue_mutex_);
+            drain_ = true;
+        }
+        not_empty_msg_.notify_all();
+    }
 }  // namespace dispatcher::queue

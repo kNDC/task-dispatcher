@@ -5,24 +5,22 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "type": "lldb",
+            "type": "cppdbg",
             "request": "launch",
             "name": "Launch queue tests",
             "program": "${workspaceFolder}/build/tests/queue/queue_test",
             "args": [],
             "cwd": "${workspaceFolder}/build",
-            "preLaunchTask": "GCC: Build Debug",
-            "initCommands": ["settings set target.disable-aslr false"]
+            "preLaunchTask": "GCC: Build Debug"
         },
         {
-            "type": "lldb",
+            "type": "cppdbg",
             "request": "launch",
             "name": "Launch dispatcher tests",
             "program": "${workspaceFolder}/build/tests/dispatcher_test",
             "args": [],
             "cwd": "${workspaceFolder}/build",
-            "preLaunchTask": "GCC: Build Debug",
-            "initCommands": ["settings set target.disable-aslr false"]
+            "preLaunchTask": "GCC: Build Debug"
         }
     ]
 }

@@ -1,20 +1,33 @@
 #pragma once
 
-#include <memory>
-
+#include "types.hpp"
 #include "queue/priority_queue.hpp"
 #include "thread_pool/thread_pool.hpp"
-#include "types.hpp"
 
-namespace dispatcher {
+#include <iostream>
+#include <print>
 
-class TaskDispatcher {
-    // здесь ваш код
-public:
-    // TaskDispatcher(size_t thread_count, ?);
+#include <memory>
 
-    void schedule(TaskPriority priority, std::function<void()> task);
-    ~TaskDispatcher();
-};
+namespace dispatcher
+{
+    using namespace queue;
+    using namespace thread_pool;
 
+    class TaskDispatcher
+    {
+    private:
+        std::shared_ptr<PriorityQueue> p_queue_;
+        ThreadPool pool_;
+
+    public:
+        TaskDispatcher(size_t n_threads = 
+                std::max(std::thread::hardware_concurrency() - 1, 1u), 
+            PriorityQueue::Config&& config = 
+                {{TaskPriority::High, QueueOptions{1000}}, 
+                {TaskPriority::Normal, QueueOptions{std::nullopt}}});
+
+        void schedule(TaskPriority priority, std::function<void()> task);
+        ~TaskDispatcher();
+    };
 }  // namespace dispatcher

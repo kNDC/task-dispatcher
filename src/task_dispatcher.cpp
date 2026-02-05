@@ -1,7 +1,21 @@
 #include "task_dispatcher.hpp"
 
-namespace dispatcher {
+namespace dispatcher
+{
+    TaskDispatcher::TaskDispatcher(size_t n_threads, 
+        PriorityQueue::Config&& config) : 
+        p_queue_{std::make_shared<PriorityQueue>(std::move(config))}, 
+        pool_{p_queue_, n_threads}
+    {}
 
-// здесь ваш код
+    void TaskDispatcher::schedule(TaskPriority priority, 
+        std::function<void()> task)
+    {
+        p_queue_->push(priority, std::move(task));
+    }
 
-} // namespace dispatcher
+    TaskDispatcher::~TaskDispatcher()
+    {
+        p_queue_->shutdown();
+    }
+}  // namespace dispatcher
