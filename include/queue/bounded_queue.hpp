@@ -4,6 +4,8 @@
 
 #include <list>
 
+#include <optional>
+
 #include <mutex>
 #include <atomic>
 #include <condition_variable>
@@ -19,14 +21,15 @@ namespace dispatcher::queue
 
         mutable std::mutex queue_mutex_;
         bool drain_ = false;
-        std::condition_variable not_empty_msg_;
-        std::condition_variable not_full_msg_;
+        std::condition_variable not_empty_cv_;
+        std::condition_variable not_full_cv_;
 
     public:
         explicit BoundedQueue(size_t capacity);
         ~BoundedQueue() override;
 
-        void push(T element) override;
+        void push(const T& element) override;
+        void push(T&& element) override;
         std::optional<T> try_pop() override;
 
         bool empty() const override;
@@ -42,10 +45,10 @@ namespace dispatcher::queue
     BoundedQueue<T>::~BoundedQueue() { drain(); }
 
     template <typename T>
-    void BoundedQueue<T>::push(T element)
+    void BoundedQueue<T>::push(const T& element)
     {
         std::unique_lock lock(queue_mutex_);
-        not_full_msg_.wait(lock, 
+        not_full_cv_.wait(lock, 
             [this]()
             {
                 return queue_.size() < capacity_;
@@ -54,14 +57,30 @@ namespace dispatcher::queue
         queue_.emplace_back(std::move(element));
 
         lock.unlock();
-        not_empty_msg_.notify_one();
+        not_empty_cv_.notify_one();
+    }
+
+    template <typename T>
+    void BoundedQueue<T>::push(T&& element)
+    {
+        std::unique_lock lock(queue_mutex_);
+        not_full_cv_.wait(lock, 
+            [this]()
+            {
+                return queue_.size() < capacity_;
+            });
+        
+        queue_.emplace_back(std::move(element));
+
+        lock.unlock();
+        not_empty_cv_.notify_one();
     }
 
     template <typename T>
     std::optional<T> BoundedQueue<T>::try_pop()
     {
         std::unique_lock lock(queue_mutex_);
-        not_empty_msg_.wait(lock, 
+        not_empty_cv_.wait(lock, 
             [this]()
             {
                 return queue_.size() || drain_;
@@ -73,7 +92,7 @@ namespace dispatcher::queue
         queue_.pop_front();
 
         lock.unlock();
-        not_full_msg_.notify_one();
+        not_full_cv_.notify_one();
 
         return out;
     }
@@ -93,6 +112,6 @@ namespace dispatcher::queue
             drain_ = true;
         }
 
-        not_empty_msg_.notify_all();
+        not_empty_cv_.notify_all();
     }
 }  // namespace dispatcher::queue

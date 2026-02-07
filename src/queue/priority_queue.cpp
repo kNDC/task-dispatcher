@@ -9,13 +9,12 @@ namespace dispatcher::queue
             throw std::logic_error("Unsupported configuration");
         }
         
-        size_t i = 0;
         for (const std::pair<const TaskPriority, QueueOptions>& config_datum : config)
         {
             // Если задана ёмкость, используется ограниченная очередь
-            if (config_datum.second.capacity)
+            if (config_datum.second)
             {
-                size_t capacity = *config_datum.second.capacity;
+                size_t capacity = *config_datum.second;
                 queues_[priorities.at(config_datum.first)] = 
                     std::make_unique<BoundedQueue<Task>>(capacity);
             }
@@ -34,7 +33,7 @@ namespace dispatcher::queue
     
     PriorityQueue::~PriorityQueue()
     {
-        shutdown();
+        drain();
     }
 
     void PriorityQueue::push(TaskPriority priority, Task task)
@@ -42,10 +41,10 @@ namespace dispatcher::queue
         queues_[priorities.at(priority)]->push(std::move(task));
 
         { std::unique_lock lock(mutex_); }
-        not_empty_msg_.notify_one();
+        not_empty_cv_.notify_one();
     }
     
-    std::optional<PriorityQueue::Task> PriorityQueue::pop()
+    std::optional<PriorityQueue::Task> PriorityQueue::try_pop()
     {
         std::optional<Task> out{};
 
@@ -63,7 +62,7 @@ namespace dispatcher::queue
             if (drain_.test(std::memory_order::acquire)) break;
             
             std::unique_lock lock(mutex_);
-            not_empty_msg_.wait(lock, 
+            not_empty_cv_.wait(lock, 
                 [this]()
                 {
                     if (drain_.test(std::memory_order::acquire)) return true;
@@ -81,7 +80,7 @@ namespace dispatcher::queue
         return out;
     }
 
-    void PriorityQueue::shutdown()
+    void PriorityQueue::drain()
     {
         {
             std::unique_lock lock(mutex_);
@@ -90,6 +89,6 @@ namespace dispatcher::queue
 
         /* Больше не нужно блокироваться из-за
         пустых очередей */
-        not_empty_msg_.notify_all();
+        not_empty_cv_.notify_all();
     }
 } // namespace dispatcher::queue

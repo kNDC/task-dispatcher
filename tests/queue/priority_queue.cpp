@@ -41,7 +41,7 @@ TEST(PriorityQueue_Tests, Ordering)
     for (size_t i = 0; i < n_elements; ++i)
     {
         MaybeTask maybe_task = 
-            queue.pop();
+            queue.try_pop();
         
         if (maybe_task)
         {
@@ -55,7 +55,7 @@ TEST(PriorityQueue_Tests, Ordering)
     for (size_t i = 0; i < n_elements; ++i)
     {
         MaybeTask maybe_task = 
-            queue.pop();
+            queue.try_pop();
         
         if (maybe_task)
         {
@@ -101,12 +101,12 @@ TEST(PriorityQueue_Tests, Draining)
     }
 
     // Пропускающий режим
-    queue.shutdown();
+    queue.drain();
     
     // Извлечение задач
     for (size_t i = 0; i < 2 * n_elements; ++i)
     {
-        MaybeTask maybe_task = queue.pop();
+        MaybeTask maybe_task = queue.try_pop();
         
         if (maybe_task)
         {
@@ -119,7 +119,7 @@ TEST(PriorityQueue_Tests, Draining)
     // Пустой выход по истощении запаса задач
     for (size_t i = 2 * n_elements; i < 3 * n_elements; ++i)
     {
-        MaybeTask maybe_task = queue.pop();
+        MaybeTask maybe_task = queue.try_pop();
         EXPECT_EQ(!maybe_task, true);
     }
 }
@@ -180,7 +180,7 @@ TEST(PriorityQueue_Tests, Blocking)
                     cv.notify_one();
                 }
                 
-                p_result.store(std::make_shared<MaybeTask>(queue.pop()), 
+                p_result.store(std::make_shared<MaybeTask>(queue.try_pop()), 
                     std::memory_order::acq_rel);
             }
         });
@@ -200,7 +200,7 @@ TEST(PriorityQueue_Tests, Blocking)
     (**p_result.load(std::memory_order::acquire))();
     EXPECT_EQ(tracker + 1, 2 * n_elements);
     
-    queue.shutdown();
+    queue.drain();
 
     {
         std::unique_lock lock(mutex);
@@ -300,7 +300,7 @@ TEST_P(PriorityQueueFixture, VariousThreadCounts)
                     
                     while (!stop.test(std::memory_order::relaxed))
                     {
-                        MaybeTask maybe_val = queue.pop();
+                        MaybeTask maybe_val = queue.try_pop();
                         
                         if (!maybe_val)
                         {
@@ -322,7 +322,7 @@ TEST_P(PriorityQueueFixture, VariousThreadCounts)
 
         /* Слив оставшихся значений и 
         std::nullopt-ов без блокировки */
-        queue.shutdown();
+        queue.drain();
 
         // Ожидание завершения получателей
         for (std::jthread& receiver : receivers)

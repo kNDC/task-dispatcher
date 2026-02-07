@@ -29,7 +29,7 @@ namespace dispatcher::thread_pool
                     while (true)
                     {
                         std::optional<PriorityQueue::Task> maybe_task = 
-                            p_queue_->pop();
+                            p_queue_->try_pop();
     
                         if (maybe_task) try
                         {
