@@ -12,21 +12,32 @@
 #include <stdexcept>
 #include <unordered_map>
 
-namespace dispatcher::queue {
+namespace dispatcher::queue
+{
+    class PriorityQueue
+    {
+    private:
+        std::array<std::unique_ptr<IQueue<std::function<void()>>>, 
+            n_priorities> queues_;
+        
+        std::mutex mutex_;
+        std::condition_variable not_empty_msg_;
+        std::atomic_flag drain_ = ATOMIC_FLAG_INIT;
 
-class PriorityQueue {
-    // здесь ваш код
-public:
-    // explicit PriorityQueue(?);
+    public:
+        using Task = std::function<void()>;
+        using Config = std::map<TaskPriority, QueueOptions>;
 
-    void push(TaskPriority priority, std::function<void()> task);
-    // block on pop until shutdown is called
-    // after that return std::nullopt on empty queue
-    std::optional<std::function<void()>> pop();
+        explicit PriorityQueue(Config&& config);
+        ~PriorityQueue();
 
-    void shutdown();
+        void push(TaskPriority priority, Task task);
 
-    ~PriorityQueue();
-};
+        // Блокируется при пустой очереди до вызова shutdown(), 
+        // а после выводит std::nullopt.
+        std::optional<Task> pop();
+
+        void shutdown();
+    };
 
 }  // namespace dispatcher::queue

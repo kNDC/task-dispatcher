@@ -1,19 +1,25 @@
 #pragma once
+
 #include <functional>
 #include <optional>
 
-namespace dispatcher::queue {
+namespace dispatcher::queue
+{
+    struct QueueOptions
+    {
+        std::optional<int> capacity;
+    };
 
-struct QueueOptions {
-    bool bounded;
-    std::optional<int> capacity;
-};
+    template <typename T>
+    class IQueue
+    {
+    public:
+        virtual ~IQueue() = default;
 
-class IQueue {
-public:
-    virtual ~IQueue() = default;
-    virtual void push(std::function<void()> task) = 0;
-    virtual std::optional<std::function<void()>> try_pop() = 0;
-};
+        virtual void push(T element) = 0;
+        virtual std::optional<T> try_pop() = 0;
 
+        virtual bool empty() const = 0;
+        virtual void drain() = 0;
+    };
 }  // namespace dispatcher::queue

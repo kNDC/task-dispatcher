@@ -5,25 +5,29 @@
 #include <mutex>
 #include <string>
 
-class Logger {
+class Logger
+{
 public:
-    static Logger &Get() {
+    static Logger& Get()
+    {
         static Logger instance;
         return instance;
     }
 
-    void Log(const std::string &message) { fprintf(file_, "%s\n", message.c_str()); }
+    void Log(const std::string& message) { fprintf(file_, "%s\n", message.c_str()); }
 
-    Logger(const Logger &) = delete;
-    Logger &operator=(const Logger &) = delete;
+    Logger(const Logger&) = delete;
+    Logger& operator=(const Logger&) = delete;
     ~Logger() = default;
 
 private:
-    Logger() {
+    Logger()
+    {
         file_ = stdout;
+        
         // отключаем буферизацию
         setvbuf(file_, nullptr, _IONBF, 0);
     }
 
-    FILE *file_;
+    FILE* file_;
 };
