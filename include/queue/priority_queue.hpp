@@ -3,14 +3,17 @@
 #include "queue/unbounded_queue.hpp"
 #include "types.hpp"
 
-#include <atomic>
-#include <limits>
-#include <map>
 #include <memory>
+
+#include <array>
+#include <map>
+
+#include <atomic>
 #include <mutex>
-#include <optional>
+#include <condition_variable>
+
+#include <limits>
 #include <stdexcept>
-#include <unordered_map>
 
 namespace dispatcher::queue
 {
@@ -21,7 +24,7 @@ namespace dispatcher::queue
             n_priorities> queues_;
         
         std::mutex mutex_;
-        std::condition_variable not_empty_msg_;
+        std::condition_variable not_empty_cv_;
         std::atomic_flag drain_ = ATOMIC_FLAG_INIT;
 
     public:
@@ -33,11 +36,11 @@ namespace dispatcher::queue
 
         void push(TaskPriority priority, Task task);
 
-        // Блокируется при пустой очереди до вызова shutdown(), 
+        // Блокируется при пустой очереди до вызова drain(), 
         // а после выводит std::nullopt.
-        std::optional<Task> pop();
+        std::optional<Task> try_pop();
 
-        void shutdown();
+        void drain();
     };
 
 }  // namespace dispatcher::queue

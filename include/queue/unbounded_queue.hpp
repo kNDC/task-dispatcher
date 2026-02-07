@@ -1,8 +1,10 @@
 #pragma once
+
 #include "queue/queue.hpp"
 
 #include <list>
 
+#include <optional>
 #include <functional>
 
 #include <mutex>
@@ -18,7 +20,7 @@ namespace dispatcher::queue
 
         mutable std::mutex queue_mutex_;
         bool drain_ = false;
-        std::condition_variable not_empty_msg_;
+        std::condition_variable not_empty_cv_;
 
     public:
         explicit UnboundedQueue(size_t capacity = 0)
@@ -26,7 +28,9 @@ namespace dispatcher::queue
 
         ~UnboundedQueue() override;
 
-        void push(T element) override;
+        void push(const T& element) override;
+        void push(T&& element) override;
+
         std::optional<T> try_pop() override;
 
         bool empty() const override;
@@ -37,19 +41,28 @@ namespace dispatcher::queue
     UnboundedQueue<T>::~UnboundedQueue() { drain(); }
 
     template <typename T>
-    void UnboundedQueue<T>::push(T element)
+    void UnboundedQueue<T>::push(const T& element)
+    {
+        std::unique_lock lock(queue_mutex_);
+        queue_.emplace_back(element);
+
+        not_empty_cv_.notify_one();
+    }
+
+    template <typename T>
+    void UnboundedQueue<T>::push(T&& element)
     {
         std::unique_lock lock(queue_mutex_);
         queue_.emplace_back(std::move(element));
 
-        not_empty_msg_.notify_one();
+        not_empty_cv_.notify_one();
     }
 
     template <typename T>
     std::optional<T> UnboundedQueue<T>::try_pop()
     {
         std::unique_lock lock(queue_mutex_);
-        not_empty_msg_.wait(lock, 
+        not_empty_cv_.wait(lock, 
             [this]()
             {
                 return queue_.size() || drain_;
@@ -77,6 +90,7 @@ namespace dispatcher::queue
             std::lock_guard lock(queue_mutex_);
             drain_ = true;
         }
-        not_empty_msg_.notify_all();
+
+        not_empty_cv_.notify_all();
     }
 }  // namespace dispatcher::queue

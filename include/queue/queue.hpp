@@ -5,18 +5,17 @@
 
 namespace dispatcher::queue
 {
-    struct QueueOptions
-    {
-        std::optional<int> capacity;
-    };
-
+    using QueueOptions = 
+        std::optional<size_t>;
+    
     template <typename T>
     class IQueue
     {
     public:
         virtual ~IQueue() = default;
 
-        virtual void push(T element) = 0;
+        virtual void push(const T& element) = 0;
+        virtual void push(T&& element) = 0;
         virtual std::optional<T> try_pop() = 0;
 
         virtual bool empty() const = 0;

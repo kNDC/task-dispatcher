@@ -16,6 +16,6 @@ namespace dispatcher
 
     TaskDispatcher::~TaskDispatcher()
     {
-        p_queue_->shutdown();
+        p_queue_->drain();
     }
 }  // namespace dispatcher

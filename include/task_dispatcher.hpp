@@ -24,8 +24,8 @@ namespace dispatcher
         TaskDispatcher(size_t n_threads = 
                 std::max(std::thread::hardware_concurrency() - 1, 1u), 
             PriorityQueue::Config&& config = 
-                {{TaskPriority::High, QueueOptions{1000}}, 
-                {TaskPriority::Normal, QueueOptions{std::nullopt}}});
+                {{TaskPriority::High, 1000}, 
+                {TaskPriority::Normal, std::nullopt}});
 
         void schedule(TaskPriority priority, std::function<void()> task);
         ~TaskDispatcher();
